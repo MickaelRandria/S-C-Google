@@ -1,46 +1,112 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from './Card';
 import Button from './Button';
-import { Heart, Scale, Users } from 'lucide-react';
+import { Scale, Loader2, Users } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 interface DilemmaGameProps {
+  isHost: boolean;
+  gameCode: string;
+  playerId: string;
   onFinish: () => void;
 }
 
 const DILEMMAS = [
   {
-    question: "Tu gagnes 50 000€ mais tu ne peux plus jamais manger au restaurant avec ton/ta partenaire.",
-    optionA: "Je prends l'argent 💰",
-    optionB: "Je garde mes restos ! 🍽️"
+    question: "Ton/ta partenaire peut connaitre TOUT ce que tu penses de lui/elle depuis le début (le bon ET le mauvais). C'est ok ?",
+    optionA: "Oui, transparence totale 🔓",
+    optionB: "Non, y'a des choses qu'il vaut mieux ignorer 🙈"
   },
   {
-    question: "Tu peux lire les pensées de ton/ta partenaire pendant 24h. Tu le fais ?",
-    optionA: "Oui, je veux savoir ! 🧠",
-    optionB: "Non, secret défense 🤐"
+    question: "Tu peux revivre votre premier rendez-vous, mais tu oublies tout ce que vous avez vécu depuis. Tu le fais ?",
+    optionA: "Oui, je veux retrouver ces papillons 🦋",
+    optionB: "Non, je ne sacrifie pas nos souvenirs 💝"
   },
   {
-    question: "Tu dois poster la photo la plus gênante de ton couple sur Instagram pour un voyage aux Maldives.",
-    optionA: "On poste ! ✈️",
-    optionB: "Jamais ! 😤"
+    question: "Ton/ta partenaire a un(e) meilleur(e) ami(e) qui le/la connait mieux que toi sur certains sujets. Ça te dérange ?",
+    optionA: "Oui, je devrais être son n°1 en tout 😤",
+    optionB: "Non, c'est impossible d'être expert en tout 🤷"
+  },
+  {
+    question: "On vous offre une maison de rêve, mais vous ne pouvez jamais voyager ensemble. Vous acceptez ?",
+    optionA: "On prend la maison ! 🏡",
+    optionB: "Jamais, les voyages c'est sacré ✈️"
+  },
+  {
+    question: "Tu apprends que ton/ta partenaire a menti sur un détail insignifiant il y a 3 ans. Tu en fais quoi ?",
+    optionA: "C'est rien, j'oublie 😌",
+    optionB: "Si il/elle a menti sur ça, sur quoi d'autre ? 🤔"
   }
 ];
 
-const DilemmaGame: React.FC<DilemmaGameProps> = ({ onFinish }) => {
+const DilemmaGame: React.FC<DilemmaGameProps> = ({ isHost, gameCode, playerId, onFinish }) => {
   const [index, setIndex] = useState(0);
-  const [voted, setVoted] = useState(false);
-  const [reveal, setReveal] = useState(false);
+  const [phase, setPhase] = useState<'playing' | 'results'>('playing');
+  const [votedChoice, setVotedChoice] = useState<'A' | 'B' | null>(null);
+  const [stats, setStats] = useState({ a: 50, b: 50 });
 
-  const d = DILEMMAS[index];
+  useEffect(() => {
+    const channel = supabase
+      .channel(`dilemma_sync_${gameCode}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `code=eq.${gameCode}` }, (payload) => {
+        const newData = payload.new;
+        setIndex(newData.question_index || 0);
+        setPhase(newData.minigame_phase as any || 'playing');
+        if (newData.minigame_phase === 'playing') setVotedChoice(null);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [gameCode]);
 
-  const nextDilemma = () => {
+  useEffect(() => {
+    if (phase === 'results') {
+      const fetchStats = async () => {
+        const { data } = await supabase
+          .from('minigame_state')
+          .select('data')
+          .eq('game_code', gameCode)
+          .eq('data->index', index);
+        
+        if (data && data.length > 0) {
+          const aCount = data.filter(d => d.data.choice === 'A').length;
+          const bCount = data.filter(d => d.data.choice === 'B').length;
+          const total = aCount + bCount;
+          if (total > 0) {
+            setStats({ a: Math.round((aCount / total) * 100), b: Math.round((bCount / total) * 100) });
+          }
+        }
+      };
+      fetchStats();
+    }
+  }, [phase, gameCode, index]);
+
+  const handleVote = async (choice: 'A' | 'B') => {
+    if (votedChoice) return;
+    setVotedChoice(choice);
+    await supabase.from('minigame_state').insert({
+      game_code: gameCode,
+      player_id: playerId,
+      player_name: 'Dilemma Voter',
+      data: { index, choice }
+    });
+  };
+
+  const updateHostPhase = async (p: string) => {
+    await supabase.from('games').update({ minigame_phase: p }).eq('code', gameCode);
+  };
+
+  const nextDilemma = async () => {
     if (index < DILEMMAS.length - 1) {
-      setIndex(index + 1);
-      setVoted(false);
-      setReveal(false);
+      await supabase.from('games').update({ 
+        question_index: index + 1, 
+        minigame_phase: 'playing' 
+      }).eq('code', gameCode);
     } else {
       onFinish();
     }
   };
+
+  const d = DILEMMAS[index];
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 space-y-8 animate-fade-in max-w-md mx-auto">
@@ -53,54 +119,66 @@ const DilemmaGame: React.FC<DilemmaGameProps> = ({ onFinish }) => {
       </div>
 
       <div className="w-full space-y-6">
-        <div className="bg-white/60 backdrop-blur-md p-6 rounded-3xl border border-rose-200/50 text-center font-bold text-slate-800 text-lg shadow-sm italic leading-relaxed">
+        <div className="bg-white/60 backdrop-blur-md p-6 rounded-3xl border border-rose-200/50 text-center font-bold text-slate-800 text-lg shadow-sm italic leading-relaxed animate-fade-in-up">
            "{d.question}"
         </div>
 
         <div className="grid grid-cols-1 gap-3">
           <Button 
-            variant={voted ? 'primary' : 'glass'} 
+            variant={votedChoice === 'A' ? 'primary' : 'glass'} 
             fullWidth 
             size="lg" 
-            className="h-24 !justify-center flex-col"
-            onClick={() => setVoted(true)}
+            className={`h-24 !justify-center flex-col transition-all duration-300 ${phase === 'results' && votedChoice !== 'A' ? 'opacity-40' : ''}`}
+            onClick={() => handleVote('A')}
+            disabled={!!votedChoice || phase === 'results'}
           >
             <span className="text-xs font-bold uppercase tracking-widest opacity-60">Option A</span>
-            <span className="font-bold">{d.optionA}</span>
+            <span className="font-bold text-sm sm:text-base">{d.optionA}</span>
           </Button>
 
           <Button 
-            variant={voted ? 'secondary' : 'glass'} 
+            variant={votedChoice === 'B' ? 'primary' : 'glass'} 
             fullWidth 
             size="lg" 
-            className="h-24 !justify-center flex-col"
-            onClick={() => setVoted(true)}
+            className={`h-24 !justify-center flex-col transition-all duration-300 ${phase === 'results' && votedChoice !== 'B' ? 'opacity-40' : ''}`}
+            onClick={() => handleVote('B')}
+            disabled={!!votedChoice || phase === 'results'}
           >
             <span className="text-xs font-bold uppercase tracking-widest opacity-60">Option B</span>
-            <span className="font-bold">{d.optionB}</span>
+            <span className="font-bold text-sm sm:text-base">{d.optionB}</span>
           </Button>
         </div>
 
-        {voted && !reveal && (
-          <Button variant="primary" fullWidth onClick={() => setReveal(true)}>Révéler les votes</Button>
+        {isHost && phase === 'playing' && (
+          <Button variant="secondary" fullWidth onClick={() => updateHostPhase('results')} className="mt-4 border-rose-200">
+            Voir les tendances <Users className="w-4 h-4 ml-2" />
+          </Button>
         )}
 
-        {reveal && (
-          <div className="animate-fade-in space-y-4">
-             <div className="flex items-center justify-center gap-4 py-4">
+        {phase === 'results' && (
+          <div className="animate-fade-in space-y-6 pt-4">
+             <div className="bg-white/40 p-6 rounded-3xl border border-rose-100 flex items-center justify-center gap-8 shadow-inner">
                 <div className="text-center">
-                   <div className="text-2xl font-black text-rose-500">60%</div>
-                   <div className="text-[10px] font-bold uppercase text-slate-400">Team A</div>
+                   <div className="text-4xl font-black text-rose-500">{stats.a}%</div>
+                   <div className="text-[10px] font-bold uppercase text-slate-400 tracking-tighter">Team A</div>
                 </div>
-                <div className="w-px h-8 bg-rose-100" />
+                <div className="w-px h-12 bg-rose-100" />
                 <div className="text-center">
-                   <div className="text-2xl font-black text-slate-400">40%</div>
-                   <div className="text-[10px] font-bold uppercase text-slate-400">Team B</div>
+                   <div className="text-4xl font-black text-slate-400">{stats.b}%</div>
+                   <div className="text-[10px] font-bold uppercase text-slate-400 tracking-tighter">Team B</div>
                 </div>
              </div>
-             <Button variant="primary" fullWidth onClick={nextDilemma}>
-               {index < DILEMMAS.length - 1 ? 'Dilemme Suivant ➡️' : 'Reprendre le Quiz 💘'}
-             </Button>
+             {isHost && (
+               <Button variant="primary" fullWidth onClick={nextDilemma} className="animate-bounce-slight shadow-xl shadow-rose-500/20">
+                 {index < DILEMMAS.length - 1 ? 'Dilemme Suivant ➡️' : 'Reprendre le Quiz 💘'}
+               </Button>
+             )}
+          </div>
+        )}
+
+        {phase === 'playing' && !isHost && !votedChoice && (
+          <div className="flex items-center justify-center gap-2 text-rose-300 text-[10px] font-bold uppercase animate-pulse">
+            <Loader2 className="w-3 h-3 animate-spin" /> En attente de ton choix...
           </div>
         )}
       </div>
