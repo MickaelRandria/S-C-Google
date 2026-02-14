@@ -45,14 +45,24 @@ const DilemmaGame: React.FC<DilemmaGameProps> = ({ isHost, gameCode, playerId, o
   const [votedChoice, setVotedChoice] = useState<'A' | 'B' | null>(null);
   const [stats, setStats] = useState({ a: 50, b: 50 });
 
+  // Sync phase et index du dilemme
   useEffect(() => {
     const channel = supabase
       .channel(`dilemma_sync_${gameCode}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `code=eq.${gameCode}` }, (payload) => {
-        const newData = payload.new;
-        setIndex(newData.question_index || 0);
-        setPhase(newData.minigame_phase as any || 'playing');
-        if (newData.minigame_phase === 'playing') setVotedChoice(null);
+        const newPhase = (payload.new as any).minigame_phase;
+        if (newPhase) setPhase(newPhase as any);
+        if (newPhase === 'playing') setVotedChoice(null);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'minigame_state', filter: `game_code=eq.${gameCode}` }, (payload) => {
+        // Fix for Error: Property 'data' does not exist on type '{} | { [key: string]: any; }'.
+        const newData = payload.new as any;
+        // Le host propage l'index via une ligne spécifique dans minigame_state
+        if (newData && newData.data?.dilemmaIndex !== undefined) {
+          setIndex(newData.data.dilemmaIndex);
+          setPhase('playing');
+          setVotedChoice(null);
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -68,8 +78,9 @@ const DilemmaGame: React.FC<DilemmaGameProps> = ({ isHost, gameCode, playerId, o
           .eq('data->index', index);
         
         if (data && data.length > 0) {
-          const aCount = data.filter(d => d.data.choice === 'A').length;
-          const bCount = data.filter(d => d.data.choice === 'B').length;
+          // Fix for Error: Property 'data' does not exist on type '{} | { [key: string]: any; }'.
+          const aCount = data.filter(d => (d.data as any).choice === 'A').length;
+          const bCount = data.filter(d => (d.data as any).choice === 'B').length;
           const total = aCount + bCount;
           if (total > 0) {
             setStats({ a: Math.round((aCount / total) * 100), b: Math.round((bCount / total) * 100) });
@@ -96,17 +107,29 @@ const DilemmaGame: React.FC<DilemmaGameProps> = ({ isHost, gameCode, playerId, o
   };
 
   const nextDilemma = async () => {
-    if (index < DILEMMAS.length - 1) {
-      await supabase.from('games').update({ 
-        question_index: index + 1, 
-        minigame_phase: 'playing' 
-      }).eq('code', gameCode);
+    const nextIdx = index + 1;
+    if (nextIdx < DILEMMAS.length) {
+      // On utilise minigame_state pour propager l'index (PAS question_index global)
+      await supabase.from('minigame_state').upsert({
+        game_code: gameCode,
+        player_id: 'DILEMMA-TRACKER',
+        player_name: 'dilemma_tracker',
+        data: { dilemmaIndex: nextIdx }
+      }, { onConflict: 'game_code,player_id' });
+      
+      // On reset la phase via games
+      await supabase.from('games').update({ minigame_phase: 'playing' }).eq('code', gameCode);
+      
+      setIndex(nextIdx);
+      setVotedChoice(null);
+      setPhase('playing');
     } else {
       onFinish();
     }
   };
 
   const d = DILEMMAS[index];
+  if (!d) return <div className="flex flex-col items-center justify-center min-h-[70vh]"><Loader2 className="w-12 h-12 text-rose-500 animate-spin" /><p className="text-rose-400 mt-4">Transition...</p></div>;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 space-y-8 animate-fade-in max-w-md mx-auto">

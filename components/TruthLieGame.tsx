@@ -27,25 +27,50 @@ const TruthLieGame: React.FC<TruthLieGameProps> = ({ isHost, players, gameCode, 
   useEffect(() => {
     const fetchCurrentState = async () => {
       const { data: gData } = await supabase.from('games').select('minigame_phase').eq('code', gameCode).single();
-      if (gData) setPhase(gData.minigame_phase as any || 'setup');
+      if (gData) setPhase((gData as any).minigame_phase as any || 'setup');
 
-      const { data: sData } = await supabase.from('minigame_state').select('*').eq('game_code', gameCode).single();
+      const { data: sData } = await supabase.from('minigame_state').select('*').eq('game_code', gameCode).maybeSingle();
       if (sData) {
-        setActivePlayer({ id: sData.player_id, name: sData.player_name });
-        setSubmittedFacts(sData.data.facts || []);
-        if (gData?.minigame_phase === 'reveal') setCorrectLieIndex(sData.data.lieIndex);
+        // Fix for Error: Property 'player_id', 'player_name', 'data' does not exist on type '{} | { [key: string]: any; }'.
+        const state = sData as any;
+        setActivePlayer({ id: state.player_id, name: state.player_name });
+        if (state.data?.facts) {
+          setSubmittedFacts(state.data.facts);
+          setCorrectLieIndex(state.data.lieIndex);
+        }
       }
     };
     fetchCurrentState();
 
     const channel = supabase
       .channel(`truthlie_sync_${gameCode}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `code=eq.${gameCode}` }, (payload) => {
-        setPhase(payload.new.minigame_phase as any || 'setup');
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `code=eq.${gameCode}` }, async (payload) => {
+        const newPhase = (payload.new as any).minigame_phase as any || 'setup';
+        setPhase(newPhase);
+        
+        // Sécurité : si on passe au reveal, on re-fetch les données pour être sûr d'avoir les textes
+        if (newPhase === 'reveal') {
+           const { data: sData } = await supabase.from('minigame_state').select('*').eq('game_code', gameCode).maybeSingle();
+           // Fix for potential property access error on result
+           const state = sData as any;
+           if (state?.data?.facts) {
+             setSubmittedFacts(state.data.facts);
+             setCorrectLieIndex(state.data.lieIndex);
+           }
+        }
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'minigame_state', filter: `game_code=eq.${gameCode}` }, (payload) => {
-        setActivePlayer({ id: payload.new.player_id, name: payload.new.player_name });
-        setSubmittedFacts(payload.new.data.facts || []);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'minigame_state', filter: `game_code=eq.${gameCode}` }, (payload) => {
+        // Fix for Error in file components/TruthLieGame.tsx on line 61: Property 'player_id', 'player_name', 'data' does not exist on type '{} | { [key: string]: any; }'.
+        const newData = payload.new as any;
+        if (newData) {
+          setActivePlayer({ id: newData.player_id, name: newData.player_name });
+          if (newData.data?.facts) {
+            setSubmittedFacts(newData.data.facts);
+          }
+          if (newData.data?.lieIndex !== undefined) {
+            setCorrectLieIndex(newData.data.lieIndex);
+          }
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -60,7 +85,7 @@ const TruthLieGame: React.FC<TruthLieGameProps> = ({ isHost, players, gameCode, 
       game_code: gameCode,
       player_id: chosen.id,
       player_name: chosen.name,
-      data: { phase: 'writing' }
+      data: { phase: 'writing', facts: [], lieIndex: null }
     });
     await supabase.from('games').update({ minigame_phase: 'writing' }).eq('code', gameCode);
   };
@@ -147,7 +172,7 @@ const TruthLieGame: React.FC<TruthLieGameProps> = ({ isHost, players, gameCode, 
           <div className="space-y-4 py-2">
              <h3 className="font-bold text-center text-slate-800">Où est le mensonge ?</h3>
              <div className="space-y-3">
-               {submittedFacts.map((text, i) => (
+               {submittedFacts.length > 0 ? submittedFacts.map((text, i) => (
                  <button 
                    key={i} 
                    disabled={voteSubmitted || isMyTurn}
@@ -155,12 +180,14 @@ const TruthLieGame: React.FC<TruthLieGameProps> = ({ isHost, players, gameCode, 
                    className={`w-full p-4 text-left bg-white border border-rose-100 rounded-xl font-medium transition-all flex justify-between items-center group ${voteSubmitted ? 'opacity-50' : 'hover:border-rose-400 shadow-sm'}`}
                  >
                    <span className="text-sm leading-tight">{text}</span>
-                   <span className={`w-8 h-8 rounded-full border-2 border-rose-50 flex items-center justify-center font-bold text-rose-200 group-hover:text-rose-400 ${voteSubmitted ? 'hidden' : ''}`}>?</span>
+                   {!voteSubmitted && !isMyTurn && <span className="w-8 h-8 rounded-full border-2 border-rose-50 flex items-center justify-center font-bold text-rose-200 group-hover:text-rose-400">?</span>}
                  </button>
-               ))}
+               )) : (
+                 <div className="text-center py-4 text-rose-300 italic text-sm">Récupération des affirmations...</div>
+               )}
              </div>
              {isMyTurn && <p className="text-xs text-rose-400 font-bold text-center italic">Ils sont en train d'essayer de te démasquer ! 😈</p>}
-             {isHost && <Button variant="secondary" fullWidth onClick={() => updatePhase('reveal')}>Révéler la vérité</Button>}
+             {isHost && submittedFacts.length > 0 && <Button variant="secondary" fullWidth onClick={() => updatePhase('reveal')} className="mt-4">Révéler la vérité</Button>}
           </div>
         )}
 
@@ -172,7 +199,7 @@ const TruthLieGame: React.FC<TruthLieGameProps> = ({ isHost, players, gameCode, 
              <div>
                 <h3 className="text-2xl font-black text-emerald-600 uppercase mb-4">Le Mensonge :</h3>
                 <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-2xl text-emerald-800 font-bold italic">
-                  "{submittedFacts[correctLieIndex ?? -1]}"
+                  "{submittedFacts[correctLieIndex ?? -1] || "Chargement..."}"
                 </div>
              </div>
              {isHost && <Button variant="primary" fullWidth onClick={onFinish}>Reprendre le Quiz 💘</Button>}

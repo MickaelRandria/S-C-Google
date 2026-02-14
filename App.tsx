@@ -9,8 +9,6 @@ import QuizScreen from './components/QuizScreen';
 import ResultScreen from './components/ResultScreen';
 import CategoryAnnounce from './components/CategoryAnnounce';
 import ImposteurGame from './components/ImposteurGame';
-import TruthLieGame from './components/TruthLieGame';
-import DilemmaGame from './components/DilemmaGame';
 import { Loader2 } from 'lucide-react';
 
 const shuffle = <T,>(array: T[]): T[] => {
@@ -25,10 +23,10 @@ const GAME_FLOW = [
   { type: 'minigame', gameId: 'impostor' },
   { type: 'announce', category: 'Amour & Séries' },
   { type: 'qcm_block', category: 'Amour & Séries', count: 5 },
-  { type: 'minigame', gameId: 'truth_lie' },
+  { type: 'minigame', gameId: 'impostor' },
   { type: 'announce', category: 'Sport & Love' },
   { type: 'qcm_block', category: 'Sport & Love', count: 5 },
-  { type: 'minigame', gameId: 'dilemma_express' },
+  { type: 'minigame', gameId: 'impostor' },
   { type: 'announce', category: 'Culture G Spéciale' },
   { type: 'qcm_block', category: 'Culture G Spéciale', count: 5 },
   { type: 'minigame', gameId: 'impostor' },
@@ -429,8 +427,6 @@ function App() {
       };
 
       if (step.gameId === 'impostor') return <ImposteurGame {...commonProps} />;
-      if (step.gameId === 'truth_lie') return <TruthLieGame {...commonProps} />;
-      if (step.gameId === 'dilemma_express') return <DilemmaGame {...commonProps} />;
     }
 
     if (gameState.currentStep === 'finished') return <ResultScreen score={gameState.score} maxScore={25 * 100} onRestart={resetToMenu} />;
