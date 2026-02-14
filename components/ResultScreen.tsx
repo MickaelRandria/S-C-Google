@@ -1,8 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import Card from './Card';
-import { Heart, RefreshCcw, Share2, Star, ArrowLeft } from 'lucide-react';
+import { Heart, RefreshCcw, Share2, Trophy, ArrowLeft, Users } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { supabase } from '../supabaseClient';
+import { Player } from '../types';
 
 interface ResultScreenProps {
   score: number;
@@ -11,85 +13,64 @@ interface ResultScreenProps {
 }
 
 const ResultScreen: React.FC<ResultScreenProps> = ({ score, maxScore, onRestart }) => {
-  const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+  const [leaderboard, setLeaderboard] = useState<Player[]>([]);
+  const percentage = (score / maxScore) * 100;
 
   useEffect(() => {
-    if (percentage < 20) return;
-
-    const duration = 3000;
-    const end = Date.now() + duration;
-
-    const frame = () => {
-      confetti({
-        particleCount: 2,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0 },
-        colors: ['#E85D75', '#FF8FA3', '#FFD700', '#FF6B8A', '#FFC0CB']
-      });
-      confetti({
-        particleCount: 2,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1 },
-        colors: ['#E85D75', '#FF8FA3', '#FFD700', '#FF6B8A', '#FFC0CB']
-      });
-
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
+    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#E85D75', '#FF8FA3', '#FFD700'] });
+    
+    // Fetch final leaderboard
+    const fetchScores = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      if (code) {
+        const { data } = await supabase.from('players').select('*').eq('game_code', code).order('score', { ascending: false });
+        if (data) setLeaderboard(data);
       }
     };
-    frame();
-  }, [percentage]);
-
-  const getMessage = () => {
-    if (percentage >= 80) return { title: "Love Guru Absolu !", text: "Vous êtes les rois de l'amour et de la culture !", color: "text-rose-500" };
-    if (percentage >= 60) return { title: "Couple Goals !", text: "Impressionnant, vous vibrez ensemble !", color: "text-[#E85D75]" };
-    if (percentage >= 40) return { title: "Pas Mal du Tout !", text: "L'amour est dans le quiz !", color: "text-amber-500" };
-    if (percentage >= 20) return { title: "C'est l'intention qui compte 💕", text: "L'amour rend aveugle... même aux réponses ?", color: "text-orange-500" };
-    return { title: "Aïe... mais on vous aime quand même 💔", text: "Heureusement qu'on ne note pas l'amour !", color: "text-rose-400" };
-  };
-
-  const msg = getMessage();
+    fetchScores();
+  }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-full w-full max-w-md mx-auto p-6 space-y-8 animate-fade-in relative z-10">
-      <div className="absolute top-4 left-6">
-        <Button variant="ghost" size="sm" onClick={onRestart} className="!px-2 text-rose-400">
-           <ArrowLeft className="w-5 h-5" /> Menu
-        </Button>
+    <div className="flex flex-col items-center justify-center min-h-full w-full max-w-md mx-auto p-6 space-y-10 animate-fade-in relative z-10 pt-16">
+      <div className="absolute top-6 left-6">
+        <Button variant="ghost" size="sm" onClick={onRestart} className="text-rose-400 font-bold"><ArrowLeft className="w-4 h-4 mr-1" /> Menu</Button>
       </div>
 
-      <div className="relative mt-8">
-        <div className="absolute inset-0 bg-rose-400/20 blur-3xl rounded-full" />
-        <Heart className="w-24 h-24 text-rose-500 drop-shadow-lg relative z-10 animate-pulse-heart fill-rose-500/20" />
+      <div className="text-center space-y-4">
+        <div className="relative inline-block">
+          <div className="absolute inset-0 bg-rose-400/20 blur-3xl rounded-full scale-150" />
+          <Heart className="w-24 h-24 text-rose-500 relative z-10 animate-pulse-heart fill-rose-500/10" />
+        </div>
+        <h1 className="text-4xl font-black text-[#E85D75] tracking-tighter uppercase">Fini ! 💘</h1>
+        <p className="text-slate-600 font-medium">L'amour a parlé, les scores sont là.</p>
       </div>
 
-      <div className="text-center space-y-2 z-10">
-        <h1 className={`text-4xl font-extrabold ${msg.color}`}>
-          {msg.title}
-        </h1>
-        <p className="text-slate-600 text-lg font-medium">
-          {msg.text}
-        </p>
-      </div>
-
-      {maxScore > 0 && (
-        <Card className="w-full text-center space-y-2 bg-white/50 border-rose-100/50">
-          <div className="text-rose-400 text-sm uppercase tracking-widest font-bold">Points d'Amour</div>
-          <div className="text-6xl font-black text-[#2D1B2E] tracking-tight">
-            {score}
-            <span className="text-2xl text-rose-300 font-medium">/{maxScore}</span>
-          </div>
+      {leaderboard.length > 0 && (
+        <Card className="w-full space-y-4 !bg-white/60">
+           <div className="flex items-center gap-2 text-rose-400 font-bold text-xs uppercase tracking-widest border-b border-rose-100 pb-2">
+             <Trophy className="w-4 h-4" /> Classement Final
+           </div>
+           <div className="space-y-2">
+             {leaderboard.map((p, i) => (
+               <div key={i} className={`flex items-center justify-between p-3 rounded-2xl ${i === 0 ? 'bg-amber-50 border border-amber-200' : 'bg-white/50 border border-rose-50'}`}>
+                 <div className="flex items-center gap-3">
+                    <span className="text-xl w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-sm">{p.avatar}</span>
+                    <span className="font-bold text-slate-800">{p.name}</span>
+                 </div>
+                 <span className="font-black text-rose-500">{p.score}<span className="text-[10px] text-rose-300 ml-0.5">PTS</span></span>
+               </div>
+             ))}
+           </div>
         </Card>
       )}
 
       <div className="w-full space-y-3">
-        <Button variant="primary" fullWidth size="lg" onClick={onRestart}>
+        <Button variant="primary" fullWidth size="lg" onClick={onRestart} className="shadow-2xl shadow-rose-500/20">
           <RefreshCcw className="w-5 h-5 mr-2" /> Rejouer
         </Button>
-        <Button variant="glass" fullWidth onClick={() => alert("Célébrez ça ensemble ! ❤️")}>
-          <Share2 className="w-5 h-5 mr-2" /> Partager la vibe
+        <Button variant="glass" fullWidth className="border-rose-100/50">
+          <Share2 className="w-5 h-5 mr-2" /> Partager les résultats
         </Button>
       </div>
     </div>

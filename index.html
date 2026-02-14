@@ -25,6 +25,11 @@
         0%, 100% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
       }
+      @keyframes mesh-float {
+        0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+        33% { transform: translate(30px, -50px) scale(1.1) rotate(2deg); }
+        66% { transform: translate(-20px, 20px) scale(0.9) rotate(-2deg); }
+      }
       @keyframes fade-in {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -43,6 +48,7 @@
       }
       .animate-pulse-heart { animation: pulse-heart 2s ease-in-out infinite; }
       .animate-float { animation: float 3s ease-in-out infinite; }
+      .animate-mesh { animation: mesh-float 25s ease-in-out infinite; }
       .animate-fade-in { animation: fade-in 0.4s ease-out; }
       .animate-fade-in-up { animation: fade-in-up 0.5s ease-out; }
       .animate-bounce-slight { animation: bounce-slight 2s ease-in-out infinite; }
@@ -50,7 +56,7 @@
       
       .mesh-blob {
         position: fixed;
-        filter: blur(80px);
+        filter: blur(100px);
         z-index: -10;
         border-radius: 100%;
         opacity: 0.6;

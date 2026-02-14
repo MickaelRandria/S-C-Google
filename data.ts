@@ -237,14 +237,14 @@ export const QUESTIONS: Question[] = [
     q: "Quel son de Favé parle d'une relation toxique dans la playlist du couple 2 ?",
     opts: ["Miel", "Lac de Constance", "NAOMI", "Baby"],
     ok: 2,
-    explanation: "NAOMI de Favé ! Extrait de Fils du Soleil, un morceau intense sur l'amour compliqué."
+    explanation: "NAOMI de Favé ! Extrait de Fils du Soleil, un morceau intense."
   },
   {
     id: 'q27', type: 'qcm', category: 'Musique Perso',
     q: "Quel titre de Joé Dwèt Filé est dans la playlist de Mickael & Aina ?",
     opts: ["Ma Zone", "Toi et Moi feat Tayc", "Lova", "Calme"],
     ok: 1,
-    explanation: "Toi et Moi feat Tayc ! Une collab R&B douce entre Joé Dwèt Filé et Tayc. 🎵"
+    explanation: "Toi et Moi feat Tayc ! Une collab R&B douce. 🎵"
   },
   {
     id: 'q28', type: 'qcm', category: 'Musique Perso',
@@ -258,7 +258,7 @@ export const QUESTIONS: Question[] = [
     q: "Quel artiste chante 'Pa Pa Paw' dans la playlist de Mickael & Aina ?",
     opts: ["Ninho", "Hamza", "Damso", "Tiakola"],
     ok: 2,
-    explanation: "Damso avec 'Pa Pa Paw' ! Et oui, Damso peut aussi être romantique (ou pas). 😏"
+    explanation: "Damso avec 'Pa Pa Paw' ! Et oui, Damso peut aussi être romantique. 😏"
   },
   // === AMOUR & SÉRIES (nouvelles) ===
   {
@@ -266,80 +266,80 @@ export const QUESTIONS: Question[] = [
     q: "Dans quelle série dit-on 'You're my person' ?",
     opts: ["How I Met Your Mother", "Grey's Anatomy", "Friends", "The Office"],
     ok: 1,
-    explanation: "Cristina Yang à Meredith Grey dans Grey's Anatomy ! L'amitié la plus forte de la télé. 🏥"
+    explanation: "Cristina Yang à Meredith Grey ! L'amitié la plus forte de la télé. 🏥"
   },
   {
     id: 'q31', type: 'qcm', category: 'Amour & Séries',
-    q: "Quel film met en scène un couple qui se retrouve chaque Saint-Valentin ?",
+    q: "Quel film met en scène un casting de stars chaque Saint-Valentin ?",
     opts: ["Valentine's Day", "Love Actually", "The Notebook", "P.S. I Love You"],
     ok: 0,
-    explanation: "Valentine's Day (2010) avec un casting de folie : Taylor Swift, Bradley Cooper, Julia Roberts ! 💝"
+    explanation: "Valentine's Day (2010) avec Taylor Swift, Bradley Cooper, Julia Roberts ! 💝"
   },
   {
     id: 'q32', type: 'qcm', category: 'Amour & Séries',
-    q: "Dans 'Gossip Girl', qui est le couple le plus iconique ?",
+    q: "Dans 'Gossip Girl', quel couple est le plus iconique ?",
     opts: ["Dan & Serena", "Chuck & Blair", "Nate & Jenny", "Dan & Blair"],
     ok: 1,
-    explanation: "Chuck et Blair ! 'Three words, eight letters. Say it and I'm yours.' 💋"
+    explanation: "'Three words, eight letters. Say it and I'm yours.' Chuck & Blair forever. 💋"
   },
   // === SPORT & LOVE (nouvelles) ===
   {
     id: 'q33', type: 'qcm', category: 'Sport & Love',
-    q: "Quel joueur NBA a fait sa demande en mariage sur un yacht à Saint-Tropez ?",
+    q: "Quel joueur NBA a fait sa demande en mariage sur un yacht ?",
     opts: ["LeBron James", "Stephen Curry", "Russell Westbrook", "Dwyane Wade"],
     ok: 3,
-    explanation: "Dwyane Wade a fait sa demande à Gabrielle Union sur un yacht ! La classe absolue. 🛥️💍"
+    explanation: "Dwyane Wade à Gabrielle Union sur un yacht à Saint-Tropez ! 🛥️💍"
   },
   {
     id: 'q34', type: 'qcm', category: 'Sport & Love',
-    q: "Quel couple de sportifs s'est marié dans un château en France ?",
+    q: "Quel footballeur français s'est marié dans un château en France ?",
     opts: ["Pogba", "Kanté", "Mbappé", "Benzema"],
     ok: 0,
-    explanation: "Paul Pogba s'est marié dans un magnifique château en France ! Un mariage digne d'un roi. 👑"
+    explanation: "Paul Pogba ! Un mariage digne d'un roi dans un château. 👑"
   },
   // === CULTURE G SPÉCIALE (nouvelles) ===
   {
     id: 'q35', type: 'qcm', category: 'Culture G Spéciale',
-    q: "Dans quel pays la Saint-Valentin est-elle interdite ?",
+    q: "Dans quel pays la Saint-Valentin était-elle interdite jusqu'en 2018 ?",
     opts: ["Japon", "Arabie Saoudite", "Inde", "Russie"],
     ok: 1,
-    explanation: "L'Arabie Saoudite a interdit la Saint-Valentin jusqu'en 2018 ! Les fleurs rouges étaient même bannies des magasins. 🌹🚫"
+    explanation: "L'Arabie Saoudite ! Les fleurs rouges étaient même bannies des magasins. 🌹🚫"
   },
   {
     id: 'q36', type: 'qcm', category: 'Culture G Spéciale',
-    q: "Combien de chocolats sont vendus en France pour la Saint-Valentin chaque année ?",
-    opts: ["2 000 tonnes", "5 000 tonnes", "8 000 tonnes", "15 000 tonnes"],
+    q: "Combien de tonnes de chocolats sont vendus en France pour la Saint-Valentin ?",
+    opts: ["2 000", "5 000", "8 000", "15 000"],
     ok: 2,
-    explanation: "Environ 8 000 tonnes de chocolat ! La France est le 2e pays européen consommateur de chocolat. 🍫"
+    explanation: "8 000 tonnes ! La France est le 2e pays européen consommateur de chocolat. 🍫"
   },
   {
     id: 'q37', type: 'qcm', category: 'Culture G Spéciale',
     q: "Quelle est la ville la plus romantique du monde selon les sondages ?",
     opts: ["Venise", "Paris", "Rome", "Prague"],
     ok: 1,
-    explanation: "Paris ! La Ville Lumière est systématiquement en tête des classements. Merci la Tour Eiffel ! 🗼❤️"
+    explanation: "Paris ! La Ville Lumière en tête grâce à la Tour Eiffel. 🗼❤️"
   },
   // === MUSIQUE GÉNÉRALE (nouvelles) ===
   {
     id: 'q38', type: 'qcm', category: 'Musique Générale',
-    q: "Quel artiste a chanté 'Thinking Out Loud' pour son mariage ?",
+    q: "Quel artiste a chanté 'Thinking Out Loud' ?",
     opts: ["Justin Bieber", "Ed Sheeran", "Sam Smith", "Bruno Mars"],
     ok: 1,
-    explanation: "Ed Sheeran a écrit 'Thinking Out Loud' inspiré par sa relation avec Cherry Seaborn. Ils se sont mariés en 2019 ! 💕"
+    explanation: "Ed Sheeran l'a écrit pour sa femme Cherry Seaborn ! 💕"
   },
   {
     id: 'q39', type: 'qcm', category: 'Musique Générale',
     q: "Quel rappeur français a sorti l'album 'Cœur' ?",
     opts: ["Nekfeu", "Ninho", "Damso", "PLK"],
     ok: 0,
-    explanation: "Nekfeu avec l'album 'Les étoiles vagabondes / Cœur' sorti en 2019 ! Un album intimiste. 🌟"
+    explanation: "Nekfeu avec 'Les étoiles vagabondes / Cœur' (2019) ! Un album intimiste. 🌟"
   },
   {
     id: 'q40', type: 'qcm', category: 'Musique Générale',
-    q: "Quelle chanteuse a popularisé 'At Last' reprise dans des milliers de mariages ?",
+    q: "Quelle chanteuse a popularisé 'At Last', reprise dans des milliers de mariages ?",
     opts: ["Aretha Franklin", "Etta James", "Whitney Houston", "Tina Turner"],
     ok: 1,
-    explanation: "Etta James ! 'At Last' (1960) est LA chanson de première danse de mariage par excellence. 🎶"
+    explanation: "Etta James ! 'At Last' (1960), LA chanson de première danse. 🎶"
   }
 ];
 
@@ -379,41 +379,5 @@ export const DEBATES: Debate[] = [
     scenario: "Après plusieurs années en couple, votre partenaire vous dit qu'il/elle ne veut pas se marier. Il/elle vous aime mais ne croit pas au mariage.",
     optionA: "L'amour suffit, pas besoin de papiers pour prouver quoi que ce soit.",
     optionB: "Le mariage est important pour moi, c'est un engagement qui compte."
-  },
-  {
-    id: 'd5',
-    type: 'debate',
-    category: 'Couple',
-    title: "La charge mentale 🧠",
-    scenario: "Dans le couple, une personne gère tout (courses, ménage, planification). L'autre dit qu'il/elle 'aide quand on lui demande'.",
-    optionA: "C'est normal de demander, on ne devine pas tout automatiquement.",
-    optionB: "Non, un adulte devrait voir ce qu'il y a à faire sans qu'on le dise."
-  },
-  {
-    id: 'd6',
-    type: 'debate',
-    category: 'Relation',
-    title: "Réseaux sociaux & couple 📸",
-    scenario: "Ton/ta partenaire ne poste jamais rien de votre couple sur les réseaux. Pas de photos ensemble, pas de story. Il/elle dit que 'c'est privé'.",
-    optionA: "Respecte son choix, un couple n'a pas besoin d'être sur Instagram.",
-    optionB: "Ça me dérange, j'aimerais qu'il/elle montre qu'on est ensemble."
-  },
-  {
-    id: 'd7',
-    type: 'debate',
-    category: 'Futur',
-    title: "Vivre ensemble vs garder son appart 🏠",
-    scenario: "Après 2 ans de relation, vous hésitez entre emménager ensemble ou garder chacun son appart.",
-    optionA: "On emménage ensemble, c'est la prochaine étape logique.",
-    optionB: "On garde chacun son espace, c'est le secret pour durer."
-  },
-  {
-    id: 'd8',
-    type: 'debate',
-    category: 'Intimité',
-    title: "Le voyage solo ✈️",
-    scenario: "Ton/ta partenaire veut partir en voyage une semaine avec ses ami(e)s, sans toi. Destination : Ibiza.",
-    optionA: "Bien sûr, chacun a le droit de profiter avec ses amis !",
-    optionB: "Ibiza sans moi ? J'ai quand même des doutes..."
   }
 ];
