@@ -31,6 +31,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    if (!data) return;
+
     setSelectedOpt(null);
     setIsRevealed(false);
     setTimeLeft(TIME_LIMIT);
@@ -41,7 +43,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
       });
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [data.id]);
+  }, [data?.id]);
 
   const handleTimeout = () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -56,6 +58,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     setIsRevealed(true);
     onAnswer(index === data.ok, index);
   };
+
+  if (!data) return null;
 
   return (
     <div className="flex flex-col h-full w-full max-w-md mx-auto p-4 space-y-6 relative z-10">

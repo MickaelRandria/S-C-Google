@@ -78,7 +78,7 @@ function App() {
 
       return () => { supabase.removeChannel(channel); };
     }
-  }, [gameState.gameCode, gameState.role, gameState.currentIndex, gameState.currentStep]);
+  }, [gameState.gameCode, gameState.role, gameState.currentIndex, gameState.currentStep, gameState.items]);
 
   // Écoute du changement d'étape global (Flow Sync)
   useEffect(() => {
@@ -96,24 +96,28 @@ function App() {
               return;
             }
             
-            // Re-fetch questions si nécessaire ou utiliser locale
-            const questions = await fetchQuestions([]);
-            // On reconstruit les items basés sur le flow
-            let allItems: Question[] = [];
-            GAME_FLOW.forEach(step => {
-              if (step.type === 'qcm_block') {
-                const catQ = shuffle(questions.filter(q => q.category === step.category)).slice(0, step.count);
-                allItems = [...allItems, ...catQ];
-              }
-            });
+            // Sync items based on the host's question_order
+            const questionOrder = payload.new.question_order || [];
+            if (questionOrder.length > 0) {
+              const allQuestions = await fetchQuestions([]);
+              const orderedItems = questionOrder
+                .map((id: string) => allQuestions.find(q => q.id === id))
+                .filter(Boolean) as Question[];
 
-            setGameState(prev => ({
-              ...prev,
-              flowIndex: flowIdx,
-              currentStep: (flowStep.type === 'announce' ? 'announce' : flowStep.type === 'qcm_block' ? 'qcm' : 'minigame') as StepType,
-              items: allItems,
-              currentIndex: prev.currentIndex // Logic to align currentIndex with QCM block position
-            }));
+              setGameState(prev => ({
+                ...prev,
+                flowIndex: flowIdx,
+                currentStep: (flowStep.type === 'announce' ? 'announce' : flowStep.type === 'qcm_block' ? 'qcm' : 'minigame') as StepType,
+                items: orderedItems
+              }));
+            } else {
+              setGameState(prev => ({
+                ...prev,
+                flowIndex: flowIdx,
+                currentStep: (flowStep.type === 'announce' ? 'announce' : flowStep.type === 'qcm_block' ? 'qcm' : 'minigame') as StepType
+              }));
+            }
+            
             setCurrentAnswers([]);
           }
         )
@@ -153,17 +157,44 @@ function App() {
 
   const hostGame = async () => {
     setIsLoading(true);
-    const code = generateGameCode();
-    await supabase.from('games').insert({ code, status: 'waiting', mode: 'qcm', current_index: 0 });
 
-    const questions = await fetchQuestions([]);
+    // Bug 2 Fix: Cleanup old finished games (> 1 hour)
+    try {
+      await supabase
+        .from('games')
+        .delete()
+        .eq('status', 'finished')
+        .lt('created_at', new Date(Date.now() - 3600000).toISOString());
+    } catch (e) {
+      console.warn("Cleanup failed", e);
+    }
+
+    const code = generateGameCode();
+    
+    // Bug 1 Fix: Host pre-determines the order of ALL questions
+    const allQuestions = await fetchQuestions([]);
     let allItems: Question[] = [];
     GAME_FLOW.forEach(step => {
       if (step.type === 'qcm_block') {
-        const catQ = shuffle(questions.filter(q => q.category === step.category)).slice(0, step.count);
+        const catQ = shuffle(allQuestions.filter(q => q.category === step.category)).slice(0, step.count);
         allItems = [...allItems, ...catQ];
       }
     });
+    const questionOrder = allItems.map(q => q.id);
+
+    const { error } = await supabase.from('games').insert({ 
+      code, 
+      status: 'waiting', 
+      mode: 'qcm', 
+      current_index: 0,
+      question_order: questionOrder 
+    });
+
+    if (error) {
+      alert("Erreur lors de la création de la partie.");
+      setIsLoading(false);
+      return;
+    }
 
     setGameState(prev => ({
       ...prev,
@@ -187,10 +218,62 @@ function App() {
 
   const joinGame = async (code: string, name: string, avatar: string) => {
     setIsLoading(true);
-    const { data: gameData } = await supabase.from('games').select('*').eq('code', code).single();
-    if (!gameData) { alert("Partie introuvable !"); setIsLoading(false); return; }
+    
+    // Bug 2 Fix: Check status before joining
+    const { data: gameData, error: gameError } = await supabase
+      .from('games')
+      .select('*')
+      .eq('code', code)
+      .single();
+    
+    if (gameError || !gameData) { 
+      alert("Partie introuvable !"); 
+      setIsLoading(false); 
+      return; 
+    }
 
-    const { data: playerData } = await supabase.from('players').insert({ game_code: code, name, avatar }).select().single();
+    if (gameData.status !== 'waiting') {
+      alert("Cette partie a déjà commencé ou est terminée !");
+      setIsLoading(false);
+      return;
+    }
+
+    // Bug 2 Fix: Avoid duplicate players
+    const { data: existingPlayer } = await supabase
+      .from('players')
+      .select('*')
+      .eq('game_code', code)
+      .eq('name', name)
+      .maybeSingle();
+
+    let currentPlayerId: string;
+
+    if (existingPlayer) {
+      currentPlayerId = existingPlayer.id;
+    } else {
+      const { data: playerData, error: insertError } = await supabase
+        .from('players')
+        .insert({ game_code: code, name, avatar })
+        .select()
+        .single();
+      
+      if (insertError) {
+        alert("Impossible de rejoindre la partie.");
+        setIsLoading(false);
+        return;
+      }
+      currentPlayerId = playerData.id;
+    }
+
+    // Bug 1 Fix: Reconstruct items from question_order
+    const questionOrder = gameData.question_order || [];
+    let orderedItems: Question[] = [];
+    if (questionOrder.length > 0) {
+      const allQuestions = await fetchQuestions([]);
+      orderedItems = questionOrder
+        .map((id: string) => allQuestions.find(q => q.id === id))
+        .filter(Boolean) as Question[];
+    }
     
     setGameState(prev => ({
       ...prev,
@@ -199,8 +282,8 @@ function App() {
       isMultiplayer: true,
       role: 'player',
       gameCode: code,
-      playerId: playerData.id,
-      items: []
+      playerId: currentPlayerId,
+      items: orderedItems
     }));
     setIsLoading(false);
   };
@@ -234,20 +317,22 @@ function App() {
     setGameState(prev => ({
       ...prev,
       flowIndex: nextIdx,
-      currentStep: nextStepType,
-      currentIndex: nextStep.type === 'qcm_block' ? prev.currentIndex : prev.currentIndex
+      currentStep: nextStepType
     }));
     setCurrentAnswers([]);
   };
 
   const handleQcmAnswer = async (isCorrect: boolean, idx?: number) => {
+    const currentItem = gameState.items[gameState.currentIndex];
+    if (!currentItem) return;
+
     if (isCorrect) setGameState(prev => ({ ...prev, score: prev.score + 100 }));
     if (gameState.isMultiplayer && gameState.role === 'player' && gameState.playerId) {
-      if (isCorrect) await supabase.from('players').update({ score: gameState.score + 100 }).eq('id', gameState.playerId);
+      if (isCorrect) await supabase.from('players').update({ score: (gameState.score || 0) + 100 }).eq('id', gameState.playerId);
       await supabase.from('answers').insert({
         game_code: gameState.gameCode,
         player_id: gameState.playerId,
-        question_id: gameState.items[gameState.currentIndex].id,
+        question_id: currentItem.id,
         answer_index: idx ?? -1,
         is_correct: isCorrect
       });
@@ -256,7 +341,6 @@ function App() {
 
   const handleNextQcm = () => {
     const currentBlockIdxInItems = gameState.currentIndex + 1;
-    // Check if we finished the 5 questions of the current block
     if (currentBlockIdxInItems % 5 === 0) {
       nextFlowStep();
     } else {
@@ -275,6 +359,8 @@ function App() {
 
     if (gameState.currentStep === 'qcm') {
       const currentItem = gameState.items[gameState.currentIndex];
+      if (!currentItem) return <div className="flex flex-col items-center justify-center h-[70vh]"><Loader2 className="w-12 h-12 text-rose-500 animate-spin" /><p className="text-rose-400 mt-4">Chargement de la question...</p></div>;
+
       const correctPlayers = currentAnswers.filter(a => a.is_correct).map(a => gameState.players.find(p => p.id === a.player_id)?.name || "Joueur");
       const wrongPlayers = currentAnswers.filter(a => !a.is_correct).map(a => gameState.players.find(p => p.id === a.player_id)?.name || "Joueur");
 
@@ -298,7 +384,6 @@ function App() {
     if (gameState.currentStep === 'minigame') {
       const step = GAME_FLOW[gameState.flowIndex];
       if (step.gameId === 'impostor') return <ImposteurGame isHost={gameState.role === 'host'} players={gameState.players} gameCode={gameState.gameCode || ''} onFinish={nextFlowStep} />;
-      // Fix: Ensure the fallback object matches the Player interface by providing missing required properties
       if (step.gameId === 'truth_lie') return <TruthLieGame isHost={gameState.role === 'host'} currentPlayer={gameState.players[0] || { name: 'Toi', game_code: 'SOLO', avatar: '👤', score: 0 }} onFinish={nextFlowStep} />;
       if (step.gameId === 'dilemma_express') return <DilemmaGame onFinish={nextFlowStep} />;
     }
