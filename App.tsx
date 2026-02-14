@@ -35,8 +35,21 @@ function App() {
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [isJoining, setIsJoining] = useState(false);
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeFromUrl = urlParams.get('code');
+    if (codeFromUrl) {
+      setIsJoining(true);
+    }
+  }, []);
+
   const resetToMenu = useCallback(() => {
     setIsJoining(false);
+    // Nettoyer l'URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('code');
+    window.history.replaceState({}, '', url.toString());
+
     setGameState(prev => ({
       ...prev,
       status: 'menu',
@@ -278,6 +291,9 @@ function App() {
     }
   };
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialCode = urlParams.get('code') || '';
+
   return (
     <div className="min-h-screen text-[#2D1B2E] font-sans overflow-x-hidden relative selection:bg-rose-200 selection:text-rose-900">
       
@@ -301,7 +317,7 @@ function App() {
         )}
 
         {gameState.status === 'menu' && isJoining && (
-            <JoinGameScreen onBack={resetToMenu} onJoin={joinGame} />
+            <JoinGameScreen onBack={resetToMenu} onJoin={joinGame} initialCode={initialCode} />
         )}
 
         {gameState.status !== 'menu' && renderContent()}

@@ -23,7 +23,7 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({ role, gameCode, players, onSt
     <div className="flex flex-col items-center min-h-full w-full max-w-2xl mx-auto p-6 space-y-6 animate-fade-in relative z-10">
       
       <div className="w-full flex items-center justify-start">
-        <Button variant="ghost" size="sm" onClick={onLeave} className="!px-2">
+        <Button variant="ghost" size="sm" onClick={onLeave} className="!px-2 text-rose-400">
            <ArrowLeft className="w-5 h-5" /> Quitter
         </Button>
       </div>
@@ -52,7 +52,7 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({ role, gameCode, players, onSt
 
           {role === 'host' && (
             <div className="bg-white p-3 rounded-2xl shadow-sm border border-rose-50">
-              <QRCodeSVG value={gameCode} size={160} fgColor="#E85D75" />
+              <QRCodeSVG value={`${window.location.origin}?code=${gameCode}`} size={160} fgColor="#E85D75" />
             </div>
           )}
         </div>

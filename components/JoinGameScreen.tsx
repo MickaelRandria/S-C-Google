@@ -6,18 +6,18 @@ import { ArrowLeft, Heart } from 'lucide-react';
 interface JoinGameScreenProps {
   onJoin: (code: string, name: string, avatar: string) => void;
   onBack: () => void;
+  initialCode?: string;
 }
 
-// Les avatars utilisent maintenant les images fournies
 const PLAYERS = [
-  { name: 'Mirana', img: 'mirana.png', emoji: '👸🏽' }, 
-  { name: 'Nakib', img: 'nakib.png', emoji: '🤴🏽' },  
-  { name: 'Mickael', img: 'mickael.png', emoji: '🤴🏾' }, 
-  { name: 'Aina', img: 'aina.png', emoji: '👸🏾' },    
+  { name: 'Mirana', img: '/mirana.png', emoji: '👸🏽' }, 
+  { name: 'Nakib', img: '/nakib.png', emoji: '🤴🏽' },  
+  { name: 'Mickael', img: '/mickael.png', emoji: '🤴🏾' }, 
+  { name: 'Aina', img: '/aina.png', emoji: '👸🏾' },    
 ];
 
-const JoinGameScreen: React.FC<JoinGameScreenProps> = ({ onJoin, onBack }) => {
-  const [code, setCode] = useState('');
+const JoinGameScreen: React.FC<JoinGameScreenProps> = ({ onJoin, onBack, initialCode = '' }) => {
+  const [code, setCode] = useState(initialCode);
   const [selectedProfile, setSelectedProfile] = useState<typeof PLAYERS[0] | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -14,6 +14,8 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ score, maxScore, onRestart 
   const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
 
   useEffect(() => {
+    if (percentage < 20) return;
+
     const duration = 3000;
     const end = Date.now() + duration;
 

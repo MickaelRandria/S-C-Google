@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { GameMode, QcmCategory, DebateCategory } from '../types';
 import Button from './Button';
@@ -16,10 +15,6 @@ interface HomeScreenProps {
 const QCM_CATEGORIES: QcmCategory[] = ['Musique Perso', 'Amour & Séries', 'Sport & Love', 'Culture G Spéciale', 'Musique Générale'];
 const DEBATE_CATEGORIES: DebateCategory[] = ['Couple', 'Relation', 'Intimité', 'Futur'];
 
-/**
- * HomeScreen component provides the main menu of the game.
- * It allows starting a solo game, hosting a multiplayer game, or joining an existing one.
- */
 const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoinGame, lastScore }) => {
   const [view, setView] = useState<'main' | 'solo_mode' | 'solo_config'>('main');
   const [selectedSoloMode, setSelectedSoloMode] = useState<GameMode | null>(null);
@@ -49,7 +44,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
     }
   };
 
-  // Main menu parameters (Multiplayer Create/Join and Solo)
   const renderMainParams = () => (
     <div className="space-y-4 w-full">
        <Card className="w-full space-y-4 !bg-white/40">
@@ -64,8 +58,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
               <div className="p-2 bg-white/20 rounded-xl mr-4">
                  <Users className="w-6 h-6 text-white" />
               </div>
-              <div className="flex flex-col items-start">
-                <span className="font-bold text-white text-lg">Créer une partie</span>
+              <div className="flex flex-col items-start text-left">
+                <span className="font-bold text-white text-lg leading-none">Créer une partie</span>
                 <span className="text-xs text-rose-100 font-medium">Mode Multijoueur (Host)</span>
               </div>
               {!isOnline && <span className="absolute right-4 text-xs bg-red-500 text-white px-2 py-1 rounded">Hors-ligne</span>}
@@ -82,8 +76,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
                <div className="p-2 bg-rose-100 rounded-xl mr-4 shadow-sm">
                 <Smartphone className="w-6 h-6 text-[#E85D75]" />
               </div>
-              <div className="flex flex-col items-start">
-                <span className="font-bold text-[#2D1B2E] text-lg">Rejoindre</span>
+              <div className="flex flex-col items-start text-left">
+                <span className="font-bold text-[#2D1B2E] text-lg leading-none">Rejoindre</span>
                 <span className="text-xs text-slate-500 font-medium">Scanner ou entrer un code</span>
               </div>
             </Button>
@@ -105,15 +99,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
                 <Play className="w-6 h-6 text-[#E85D75]" />
               </div>
               <div className="flex flex-col items-start text-left">
-                <span className="font-bold text-[#2D1B2E] text-lg">Mode Solo</span>
+                <span className="font-bold text-[#2D1B2E] text-lg leading-none">Mode Solo</span>
                 <span className="text-xs text-slate-500 font-medium">S'entraîner tranquillement</span>
               </div>
             </Button>
        </Card>
        
        {lastScore !== null && (
-         <Card className="!bg-emerald-50/50 border-emerald-100 text-center py-4">
-           <div className="flex items-center justify-center gap-2 text-emerald-600 font-bold">
+         <Card className="!bg-white/50 border-rose-100 text-center py-4">
+           <div className="flex items-center justify-center gap-2 text-rose-500 font-bold">
              <Trophy className="w-5 h-5" /> Dernier score : {lastScore} pts
            </div>
          </Card>
@@ -121,7 +115,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
     </div>
   );
 
-  // Solo mode selection view
   const renderSoloModes = () => (
     <div className="grid grid-cols-1 gap-4 w-full">
       <Button variant="ghost" size="sm" onClick={() => setView('main')} className="!justify-start px-0 text-rose-400 mb-2">
@@ -151,7 +144,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
     </div>
   );
 
-  // Solo configuration view for selecting categories
   const renderSoloConfig = () => {
     const categories = selectedSoloMode === 'qcm' ? QCM_CATEGORIES : DEBATE_CATEGORIES;
     return (
@@ -195,22 +187,31 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
     );
   };
 
-  // Main render logic based on the current view state
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 space-y-8 max-w-md mx-auto relative z-10 animate-fade-in">
       <div className="text-center space-y-3">
         <div className="inline-flex p-3 bg-white/50 backdrop-blur-sm rounded-3xl border border-rose-100 shadow-sm mb-2">
           <Heart className="w-12 h-12 text-[#E85D75] fill-[#E85D75]/20 animate-pulse-heart" />
         </div>
-        <h1 className="text-5xl font-black text-[#2D1B2E] tracking-tighter">
-          COUPLE<span className="text-[#E85D75]">VIBE</span>
+        <h1 className="text-5xl font-black tracking-tighter">
+          <span className="text-[#2D1B2E]">Sauce &</span><br/>
+          <span className="text-[#E85D75]">Curious</span>
         </h1>
-        <p className="text-slate-500 font-medium max-w-[250px] mx-auto">Le quiz ultime pour tester votre connexion et vos goûts !</p>
+        <p className="text-rose-400 font-bold text-sm uppercase tracking-widest">Édition Saint-Valentin 💘</p>
+        <p className="text-slate-500 font-medium text-sm max-w-[280px] mx-auto">Le quiz ultime pour tester votre connexion et vos goûts !</p>
       </div>
 
       {view === 'main' && renderMainParams()}
       {view === 'solo_mode' && renderSoloModes()}
       {view === 'solo_config' && renderSoloConfig()}
+      
+      <div className={`
+          flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mt-4
+          ${isOnline ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}
+        `}>
+          {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+          {isOnline ? 'Cloud Sync' : 'Mode Local'}
+      </div>
     </div>
   );
 };
