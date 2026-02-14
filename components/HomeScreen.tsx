@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { GameMode, QcmCategory, DebateCategory } from '../types';
+import { GameMode, QcmCategory } from '../types';
 import Button from './Button';
 import Card from './Card';
-import { Flame, MessageCircle, Trophy, ArrowLeft, Check, Play, Users, Smartphone, Heart, Wifi, WifiOff } from 'lucide-react';
+import { Trophy, ArrowLeft, Check, Play, Users, Smartphone, Heart, Wifi, WifiOff } from 'lucide-react';
 import { isSupabaseConfigured } from '../supabaseClient';
 
 interface HomeScreenProps {
@@ -13,22 +13,11 @@ interface HomeScreenProps {
 }
 
 const QCM_CATEGORIES: QcmCategory[] = ['Musique Perso', 'Amour & Séries', 'Sport & Love', 'Culture G Spéciale', 'Musique Générale'];
-const DEBATE_CATEGORIES: DebateCategory[] = ['Couple', 'Relation', 'Intimité', 'Futur'];
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoinGame, lastScore }) => {
-  const [view, setView] = useState<'main' | 'solo_mode' | 'solo_config'>('main');
-  const [selectedSoloMode, setSelectedSoloMode] = useState<GameMode | null>(null);
+  const [view, setView] = useState<'main' | 'solo_config'>('main');
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
   const isOnline = isSupabaseConfigured();
-
-  const handleSoloModeSelect = (mode: GameMode) => {
-    setSelectedSoloMode(mode);
-    if (mode === 'mixte') {
-      onStartSolo('mixte', []);
-    } else {
-      setView('solo_config');
-    }
-  };
 
   const toggleCategory = (cat: string) => {
     if (selectedCats.includes(cat)) {
@@ -39,9 +28,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
   };
 
   const handleStartSolo = () => {
-    if (selectedSoloMode) {
-      onStartSolo(selectedSoloMode, selectedCats);
-    }
+    onStartSolo('qcm', selectedCats);
   };
 
   const renderMainParams = () => (
@@ -92,7 +79,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
               variant="glass" 
               fullWidth 
               size="lg"
-              onClick={() => setView('solo_mode')}
+              onClick={() => setView('solo_config')}
               className="!justify-start px-6 bg-white/50 border-rose-100/50"
             >
               <div className="p-2 bg-rose-100 rounded-xl mr-4 shadow-sm">
@@ -100,7 +87,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
               </div>
               <div className="flex flex-col items-start text-left">
                 <span className="font-bold text-[#2D1B2E] text-lg leading-none">Mode Solo</span>
-                <span className="text-xs text-slate-500 font-medium">S'entraîner tranquillement</span>
+                <span className="text-xs text-slate-500 font-medium">Lancer un quiz rapide</span>
               </div>
             </Button>
        </Card>
@@ -115,40 +102,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
     </div>
   );
 
-  const renderSoloModes = () => (
-    <div className="grid grid-cols-1 gap-4 w-full">
-      <Button variant="ghost" size="sm" onClick={() => setView('main')} className="!justify-start px-0 text-rose-400 mb-2">
-        <ArrowLeft className="w-4 h-4 mr-1" /> Retour
-      </Button>
-      <h2 className="text-2xl font-bold text-center mb-4 text-[#2D1B2E]">Mode Solo</h2>
-      <div className="grid grid-cols-1 gap-4">
-        <Button variant="glass" fullWidth size="lg" onClick={() => handleSoloModeSelect('qcm')} className="h-24 !justify-center">
-           <div className="flex flex-col items-center">
-             <Flame className="w-6 h-6 text-rose-500 mb-1" />
-             <span className="font-bold text-lg">Questions (QCM)</span>
-           </div>
-        </Button>
-        <Button variant="glass" fullWidth size="lg" onClick={() => handleSoloModeSelect('debate')} className="h-24 !justify-center">
-           <div className="flex flex-col items-center">
-             <MessageCircle className="w-6 h-6 text-rose-500 mb-1" />
-             <span className="font-bold text-lg">Débats</span>
-           </div>
-        </Button>
-        <Button variant="primary" fullWidth size="lg" onClick={() => handleSoloModeSelect('mixte')} className="h-24 !justify-center">
-           <div className="flex flex-col items-center text-white">
-             <Heart className="w-6 h-6 mb-1" />
-             <span className="font-bold text-lg">Mélange Mixte</span>
-           </div>
-        </Button>
-      </div>
-    </div>
-  );
-
   const renderSoloConfig = () => {
-    const categories = selectedSoloMode === 'qcm' ? QCM_CATEGORIES : DEBATE_CATEGORIES;
     return (
       <div className="space-y-6 w-full">
-        <Button variant="ghost" size="sm" onClick={() => setView('solo_mode')} className="!justify-start px-0 text-rose-400">
+        <Button variant="ghost" size="sm" onClick={() => setView('main')} className="!justify-start px-0 text-rose-400">
           <ArrowLeft className="w-4 h-4 mr-1" /> Retour
         </Button>
         <div className="text-center space-y-1">
@@ -157,7 +114,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
         </div>
         
         <div className="grid grid-cols-1 gap-3">
-          {categories.map(cat => (
+          {QCM_CATEGORIES.map(cat => (
             <button
               key={cat}
               onClick={() => toggleCategory(cat)}
@@ -202,7 +159,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
       </div>
 
       {view === 'main' && renderMainParams()}
-      {view === 'solo_mode' && renderSoloModes()}
       {view === 'solo_config' && renderSoloConfig()}
       
       <div className={`

@@ -1,12 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, GameMode, GameItem, Question, Debate, Player } from './types';
-import { fetchQuestions, fetchDebates } from './api';
+import { GameState, GameMode, GameItem, Question, Player } from './types';
+import { fetchQuestions } from './api';
 import { supabase } from './supabaseClient';
 import HomeScreen from './components/HomeScreen';
 import JoinGameScreen from './components/JoinGameScreen';
 import LobbyScreen from './components/LobbyScreen';
 import QuizScreen from './components/QuizScreen';
-import DebateScreen from './components/DebateScreen';
 import ResultScreen from './components/ResultScreen';
 import { Loader2 } from 'lucide-react';
 
@@ -14,12 +13,12 @@ const shuffle = <T,>(array: T[]): T[] => {
   return [...array].sort(() => Math.random() - 0.5);
 };
 
-const ITEMS_PER_GAME = 10;
+const ITEMS_PER_GAME = 25;
 
 function App() {
   const [gameState, setGameState] = useState<GameState>({
     status: 'menu',
-    mode: 'mixte',
+    mode: 'qcm',
     items: [],
     currentIndex: 0,
     score: 0,
@@ -34,6 +33,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [currentAnswers, setCurrentAnswers] = useState<any[]>([]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -43,9 +43,38 @@ function App() {
     }
   }, []);
 
+  // Écoute des réponses en temps réel pour le Host
+  useEffect(() => {
+    if (gameState.isMultiplayer && gameState.role === 'host' && gameState.gameCode && gameState.status === 'playing') {
+      const currentQuestion = gameState.items[gameState.currentIndex];
+      if (!currentQuestion) return;
+
+      const channel = supabase
+        .channel('answers_realtime')
+        .on(
+          'postgres_changes',
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'answers', 
+            filter: `game_code=eq.${gameState.gameCode}` 
+          },
+          (payload) => {
+            if (payload.new.question_id === currentQuestion.id) {
+              setCurrentAnswers(prev => [...prev, payload.new]);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [gameState.gameCode, gameState.role, gameState.currentIndex, gameState.status]);
+
   const resetToMenu = useCallback(() => {
     setIsJoining(false);
-    // Nettoyer l'URL
     const url = new URL(window.location.href);
     url.searchParams.delete('code');
     window.history.replaceState({}, '', url.toString());
@@ -61,6 +90,7 @@ function App() {
       currentIndex: 0,
       score: 0
     }));
+    setCurrentAnswers([]);
   }, []);
 
   const generateGameCode = () => {
@@ -79,7 +109,7 @@ function App() {
     const { error } = await supabase.from('games').insert({
       code,
       status: 'waiting',
-      mode: 'mixte',
+      mode: 'qcm',
       current_index: 0
     });
 
@@ -89,11 +119,8 @@ function App() {
       return;
     }
 
-    const [questions, debates] = await Promise.all([
-        fetchQuestions([]),
-        fetchDebates([])
-    ]);
-    const items = shuffle([...shuffle(questions).slice(0, 5), ...shuffle(debates).slice(0, 5)]);
+    const questions = await fetchQuestions([]);
+    const items = shuffle(questions).slice(0, ITEMS_PER_GAME);
 
     setGameState(prev => ({
       ...prev,
@@ -149,10 +176,7 @@ function App() {
       return;
     }
 
-    const [questions, debates] = await Promise.all([
-        fetchQuestions([]),
-        fetchDebates([])
-    ]);
+    const questions = await fetchQuestions([]);
     
     setGameState(prev => ({
       ...prev,
@@ -176,7 +200,7 @@ function App() {
           const newIndex = payload.new.current_index;
           
           if (newStatus === 'playing') {
-             const items = shuffle([...shuffle(questions).slice(0, 5), ...shuffle(debates).slice(0, 5)]);
+             const items = shuffle(questions).slice(0, ITEMS_PER_GAME);
              setGameState(prev => ({
                ...prev,
                status: 'playing',
@@ -187,6 +211,7 @@ function App() {
              setGameState(prev => ({ ...prev, status: 'finished' }));
           } else {
              setGameState(prev => ({ ...prev, currentIndex: newIndex }));
+             setCurrentAnswers([]); // Reset answers on index change
           }
         }
       )
@@ -201,20 +226,12 @@ function App() {
 
   const startSoloGame = useCallback(async (mode: GameMode, categories: string[]) => {
     setIsLoading(true);
-    let items: GameItem[] = [];
     try {
-      if (mode === 'qcm') {
-        const questions = await fetchQuestions(categories);
-        items = shuffle(questions).slice(0, ITEMS_PER_GAME);
-      } else if (mode === 'debate') {
-        const debates = await fetchDebates(categories);
-        items = shuffle(debates).slice(0, Math.min(debates.length, ITEMS_PER_GAME));
-      } else if (mode === 'mixte') {
-        const [questions, debates] = await Promise.all([fetchQuestions([]), fetchDebates([])]);
-        items = shuffle([...shuffle(questions).slice(0, 5), ...shuffle(debates).slice(0, 5)]);
-      }
+      const questions = await fetchQuestions(categories);
+      const items = shuffle(questions).slice(0, ITEMS_PER_GAME);
+      
       setGameState({
-        status: 'playing', mode, items, currentIndex: 0, score: 0, history: [],
+        status: 'playing', mode: 'qcm', items, currentIndex: 0, score: 0, history: [],
         isMultiplayer: false, role: 'solo', gameCode: null, playerId: null, players: []
       });
     } catch (e) {
@@ -224,17 +241,35 @@ function App() {
     }
   }, []);
 
-  const handleAnswer = (isCorrect: boolean) => {
-    if (gameState.items[gameState.currentIndex].type === 'qcm' && isCorrect) {
+  const handleAnswer = async (isCorrect: boolean, selectedIndex?: number) => {
+    const currentItem = gameState.items[gameState.currentIndex];
+    
+    if (isCorrect) {
       setGameState(prev => ({ ...prev, score: prev.score + 100 }));
-      if (gameState.isMultiplayer && gameState.role === 'player' && gameState.playerId) {
-          supabase.from('players').update({ score: gameState.score + 100 }).eq('id', gameState.playerId).then();
+    }
+
+    // Si multijoueur et c'est un joueur (pas le host)
+    if (gameState.isMultiplayer && gameState.role === 'player' && gameState.playerId && gameState.gameCode) {
+      // 1. Update score du joueur
+      if (isCorrect) {
+        await supabase.from('players').update({ score: gameState.score + 100 }).eq('id', gameState.playerId);
       }
+      
+      // 2. Logger la réponse dans la table answers
+      await supabase.from('answers').insert({
+        game_code: gameState.gameCode,
+        player_id: gameState.playerId,
+        question_id: currentItem.id,
+        answer_index: selectedIndex ?? -1,
+        is_correct: isCorrect
+      });
     }
   };
 
   const nextItem = async () => {
     const nextIdx = gameState.currentIndex + 1;
+    setCurrentAnswers([]); // Clear previous answers for the next question
+    
     if (nextIdx >= gameState.items.length) {
       finishGame();
     } else {
@@ -258,46 +293,45 @@ function App() {
         return <LobbyScreen role={gameState.role as 'host' | 'player'} gameCode={gameState.gameCode || ''} players={gameState.players} onStartGame={startMultiplayerGame} onLeave={resetToMenu} />;
     }
     if (gameState.status === 'playing') {
-        const canControl = gameState.role === 'host' || gameState.role === 'solo';
+        const isHost = gameState.role === 'host';
+        const currentItem = gameState.items[gameState.currentIndex];
+        
+        // Calculer les joueurs corrects/incorrects pour le host
+        const correctPlayers = currentAnswers
+          .filter(a => a.is_correct)
+          .map(a => gameState.players.find(p => p.id === a.player_id)?.name || "Inconnu");
+        const wrongPlayers = currentAnswers
+          .filter(a => !a.is_correct)
+          .map(a => gameState.players.find(p => p.id === a.player_id)?.name || "Inconnu");
+
         return (
           <div className="animate-fade-in h-full flex flex-col pt-4 sm:pt-10">
              <div className="flex-1">
-              {gameState.items[gameState.currentIndex]?.type === 'qcm' ? (
                 <QuizScreen 
-                  data={gameState.items[gameState.currentIndex] as Question} 
+                  data={currentItem as Question} 
                   currentNumber={gameState.currentIndex + 1} 
                   total={gameState.items.length} 
-                  onAnswer={handleAnswer} 
-                  onNext={canControl ? nextItem : () => {}}
+                  onAnswer={(isCorrect, idx) => handleAnswer(isCorrect, idx)} 
+                  onNext={nextItem}
                   onBack={resetToMenu}
+                  isHost={isHost}
+                  correctPlayers={correctPlayers}
+                  wrongPlayers={wrongPlayers}
                 />
-              ) : (
-                <DebateScreen 
-                  data={gameState.items[gameState.currentIndex] as Debate} 
-                  currentNumber={gameState.currentIndex + 1} 
-                  total={gameState.items.length} 
-                  onNext={canControl ? nextItem : () => {}}
-                  onBack={resetToMenu}
-                />
-              )}
              </div>
-             {gameState.role === 'player' && <div className="text-center text-xs text-rose-400 pb-2 font-medium">L'autre couple attend... 💕</div>}
+             {!isHost && gameState.role !== 'solo' && (
+               <div className="text-center text-xs text-rose-400 pb-2 font-medium">Tes réponses comptent pour le score ! 💕</div>
+             )}
           </div>
         );
     }
     if (gameState.status === 'finished') {
-        const qcmCount = gameState.items.filter(i => i.type === 'qcm').length;
-        return <ResultScreen score={gameState.score} maxScore={qcmCount * 100} onRestart={resetToMenu} />;
+        return <ResultScreen score={gameState.score} maxScore={gameState.items.length * 100} onRestart={resetToMenu} />;
     }
   };
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const initialCode = urlParams.get('code') || '';
-
   return (
     <div className="min-h-screen text-[#2D1B2E] font-sans overflow-x-hidden relative selection:bg-rose-200 selection:text-rose-900">
-      
-      {/* MESH GRADIENT VALENTINE BACKGROUND */}
       <div className="mesh-blob top-[-10%] left-[-10%] w-[70vw] h-[70vw] bg-rose-300/50" />
       <div className="mesh-blob top-[10%] right-[-10%] w-[60vw] h-[60vw] bg-pink-200/50" />
       <div className="mesh-blob bottom-[-10%] left-[20%] w-[50vw] h-[50vw] bg-amber-200/30" />
@@ -317,7 +351,7 @@ function App() {
         )}
 
         {gameState.status === 'menu' && isJoining && (
-            <JoinGameScreen onBack={resetToMenu} onJoin={joinGame} initialCode={initialCode} />
+            <JoinGameScreen onBack={resetToMenu} onJoin={joinGame} initialCode={new URLSearchParams(window.location.search).get('code') || ''} />
         )}
 
         {gameState.status !== 'menu' && renderContent()}

@@ -3,20 +3,33 @@ import { Question } from '../types';
 import Button from './Button';
 import Card from './Card';
 import ProgressBar from './ProgressBar';
-import { CheckCircle2, XCircle, ArrowRight, Info, Timer, Heart, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowRight, Info, Timer, Heart, ArrowLeft, Check, X } from 'lucide-react';
 
 interface QuizScreenProps {
   data: Question;
   currentNumber: number;
   total: number;
-  onAnswer: (isCorrect: boolean) => void;
+  onAnswer: (isCorrect: boolean, selectedIndex?: number) => void;
   onNext: () => void;
   onBack: () => void;
+  isHost?: boolean;
+  correctPlayers?: string[];
+  wrongPlayers?: string[];
 }
 
 const TIME_LIMIT = 15;
 
-const QuizScreen: React.FC<QuizScreenProps> = ({ data, currentNumber, total, onAnswer, onNext, onBack }) => {
+const QuizScreen: React.FC<QuizScreenProps> = ({ 
+  data, 
+  currentNumber, 
+  total, 
+  onAnswer, 
+  onNext, 
+  onBack, 
+  isHost = false, 
+  correctPlayers = [], 
+  wrongPlayers = [] 
+}) => {
   const [selectedOpt, setSelectedOpt] = useState<number | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
@@ -45,15 +58,15 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ data, currentNumber, total, onA
   const handleTimeout = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     setIsRevealed(true);
-    onAnswer(false);
+    if (!isHost) onAnswer(false);
   };
 
   const handleSelect = (index: number) => {
-    if (isRevealed) return;
+    if (isRevealed || isHost) return;
     if (timerRef.current) clearInterval(timerRef.current);
     setSelectedOpt(index);
     setIsRevealed(true);
-    onAnswer(index === data.ok);
+    onAnswer(index === data.ok, index);
   };
 
   const getButtonVariant = (index: number) => {
@@ -125,9 +138,10 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ data, currentNumber, total, onA
               key={idx}
               variant={getButtonVariant(idx)}
               onClick={() => handleSelect(idx)}
-              disabled={isRevealed}
+              disabled={isRevealed || isHost}
               className={`justify-between text-left h-auto min-h-[4.5rem] py-3 px-5 transition-all duration-300 border-rose-100/50
                 ${isRevealed && idx !== data.ok && idx !== selectedOpt ? 'opacity-40 grayscale' : 'shadow-sm'}
+                ${isHost ? 'cursor-default transform-none' : ''}
               `}
             >
               <span className={`flex-1 font-medium text-lg ${isRevealed && idx === data.ok ? 'text-white' : ''}`}>{opt}</span>
@@ -138,7 +152,37 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ data, currentNumber, total, onA
         </div>
 
         {isRevealed && (
-          <div className="animate-fade-in-up space-y-4">
+          <div className="animate-fade-in-up space-y-4 pb-10">
+            {isHost && (
+              <Card className="!bg-white/60 border-rose-200 p-4 space-y-3">
+                 <div className="flex flex-col space-y-2">
+                    <div className="text-xs font-bold text-rose-400 uppercase tracking-widest border-b border-rose-100 pb-1">Résultats du tour</div>
+                    
+                    {correctPlayers.length > 0 && (
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                        {correctPlayers.map((name, i) => (
+                          <span key={i} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">{name}</span>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {wrongPlayers.length > 0 && (
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <X className="w-4 h-4 text-rose-500 shrink-0" />
+                        {wrongPlayers.map((name, i) => (
+                          <span key={i} className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full text-xs font-bold">{name}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    {correctPlayers.length === 0 && wrongPlayers.length === 0 && (
+                      <div className="text-xs text-slate-400 italic">Personne n'a répondu à temps...</div>
+                    )}
+                 </div>
+              </Card>
+            )}
+
             <Card className="!bg-rose-50/80 border-rose-200 p-4 shadow-lg shadow-rose-500/5">
               <div className="flex items-start gap-3">
                 <Info className="w-6 h-6 text-rose-500 mt-0.5 shrink-0" />
@@ -151,14 +195,17 @@ const QuizScreen: React.FC<QuizScreenProps> = ({ data, currentNumber, total, onA
               </div>
             </Card>
             
-            <Button 
-              variant="primary" 
-              fullWidth 
-              onClick={onNext}
-              className="animate-bounce-slight shadow-xl shadow-rose-500/20"
-            >
-              Suivant <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
+            {(isHost || !isHost) && (
+              <Button 
+                variant="primary" 
+                fullWidth 
+                onClick={onNext}
+                disabled={!isHost && !isRevealed} // Only host can skip or everyone after reveal
+                className={`${isHost ? 'animate-bounce-slight shadow-xl shadow-rose-500/20' : 'hidden'}`}
+              >
+                Question Suivante <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            )}
           </div>
         )}
       </div>

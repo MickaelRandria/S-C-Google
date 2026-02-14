@@ -18,7 +18,7 @@ export const QUESTIONS: Question[] = [
     q: "Quel rappeur français Nakib rajoute en plus dans sa playlist ?",
     opts: ["Ninho", "Timar", "SDM", "Werenoi"],
     ok: 1,
-    explanation: "Nakib est fan de Timar ! On retrouve ses sons comme 'SIERRA LEONE' aussi chez le couple 2."
+    explanation: "Nakib est fan de Timar ! On retrouve ses sons like 'SIERRA LEONE' aussi chez le couple 2."
   },
   {
     id: 'q3',
@@ -230,6 +230,116 @@ export const QUESTIONS: Question[] = [
     opts: ["Tout gâché", "AIME MOI (avec Joé Dwèt Filé)", "Bendo", "Les deux premiers"],
     ok: 3,
     explanation: "'Tout gâché' est chez Mirana et 'AIME MOI' avec Joé Dwèt Filé est chez Mickael & Aina ! Leto rassemble ! 🔥"
+  },
+  // === MUSIQUE PERSO (nouvelles) ===
+  {
+    id: 'q26', type: 'qcm', category: 'Musique Perso',
+    q: "Quel son de Favé parle d'une relation toxique dans la playlist du couple 2 ?",
+    opts: ["Miel", "Lac de Constance", "NAOMI", "Baby"],
+    ok: 2,
+    explanation: "NAOMI de Favé ! Extrait de Fils du Soleil, un morceau intense sur l'amour compliqué."
+  },
+  {
+    id: 'q27', type: 'qcm', category: 'Musique Perso',
+    q: "Quel titre de Joé Dwèt Filé est dans la playlist de Mickael & Aina ?",
+    opts: ["Ma Zone", "Toi et Moi feat Tayc", "Lova", "Calme"],
+    ok: 1,
+    explanation: "Toi et Moi feat Tayc ! Une collab R&B douce entre Joé Dwèt Filé et Tayc. 🎵"
+  },
+  {
+    id: 'q28', type: 'qcm', category: 'Musique Perso',
+    q: "Combien de titres de Hamza sont dans la playlist du couple 2 ?",
+    opts: ["1", "2", "3", "4"],
+    ok: 1,
+    explanation: "2 titres : 'FOREVER' et 'YESTERDAY'. Hamza en mode romantique ! 🔥"
+  },
+  {
+    id: 'q29', type: 'qcm', category: 'Musique Perso',
+    q: "Quel artiste chante 'Pa Pa Paw' dans la playlist de Mickael & Aina ?",
+    opts: ["Ninho", "Hamza", "Damso", "Tiakola"],
+    ok: 2,
+    explanation: "Damso avec 'Pa Pa Paw' ! Et oui, Damso peut aussi être romantique (ou pas). 😏"
+  },
+  // === AMOUR & SÉRIES (nouvelles) ===
+  {
+    id: 'q30', type: 'qcm', category: 'Amour & Séries',
+    q: "Dans quelle série dit-on 'You're my person' ?",
+    opts: ["How I Met Your Mother", "Grey's Anatomy", "Friends", "The Office"],
+    ok: 1,
+    explanation: "Cristina Yang à Meredith Grey dans Grey's Anatomy ! L'amitié la plus forte de la télé. 🏥"
+  },
+  {
+    id: 'q31', type: 'qcm', category: 'Amour & Séries',
+    q: "Quel film met en scène un couple qui se retrouve chaque Saint-Valentin ?",
+    opts: ["Valentine's Day", "Love Actually", "The Notebook", "P.S. I Love You"],
+    ok: 0,
+    explanation: "Valentine's Day (2010) avec un casting de folie : Taylor Swift, Bradley Cooper, Julia Roberts ! 💝"
+  },
+  {
+    id: 'q32', type: 'qcm', category: 'Amour & Séries',
+    q: "Dans 'Gossip Girl', qui est le couple le plus iconique ?",
+    opts: ["Dan & Serena", "Chuck & Blair", "Nate & Jenny", "Dan & Blair"],
+    ok: 1,
+    explanation: "Chuck et Blair ! 'Three words, eight letters. Say it and I'm yours.' 💋"
+  },
+  // === SPORT & LOVE (nouvelles) ===
+  {
+    id: 'q33', type: 'qcm', category: 'Sport & Love',
+    q: "Quel joueur NBA a fait sa demande en mariage sur un yacht à Saint-Tropez ?",
+    opts: ["LeBron James", "Stephen Curry", "Russell Westbrook", "Dwyane Wade"],
+    ok: 3,
+    explanation: "Dwyane Wade a fait sa demande à Gabrielle Union sur un yacht ! La classe absolue. 🛥️💍"
+  },
+  {
+    id: 'q34', type: 'qcm', category: 'Sport & Love',
+    q: "Quel couple de sportifs s'est marié dans un château en France ?",
+    opts: ["Pogba", "Kanté", "Mbappé", "Benzema"],
+    ok: 0,
+    explanation: "Paul Pogba s'est marié dans un magnifique château en France ! Un mariage digne d'un roi. 👑"
+  },
+  // === CULTURE G SPÉCIALE (nouvelles) ===
+  {
+    id: 'q35', type: 'qcm', category: 'Culture G Spéciale',
+    q: "Dans quel pays la Saint-Valentin est-elle interdite ?",
+    opts: ["Japon", "Arabie Saoudite", "Inde", "Russie"],
+    ok: 1,
+    explanation: "L'Arabie Saoudite a interdit la Saint-Valentin jusqu'en 2018 ! Les fleurs rouges étaient même bannies des magasins. 🌹🚫"
+  },
+  {
+    id: 'q36', type: 'qcm', category: 'Culture G Spéciale',
+    q: "Combien de chocolats sont vendus en France pour la Saint-Valentin chaque année ?",
+    opts: ["2 000 tonnes", "5 000 tonnes", "8 000 tonnes", "15 000 tonnes"],
+    ok: 2,
+    explanation: "Environ 8 000 tonnes de chocolat ! La France est le 2e pays européen consommateur de chocolat. 🍫"
+  },
+  {
+    id: 'q37', type: 'qcm', category: 'Culture G Spéciale',
+    q: "Quelle est la ville la plus romantique du monde selon les sondages ?",
+    opts: ["Venise", "Paris", "Rome", "Prague"],
+    ok: 1,
+    explanation: "Paris ! La Ville Lumière est systématiquement en tête des classements. Merci la Tour Eiffel ! 🗼❤️"
+  },
+  // === MUSIQUE GÉNÉRALE (nouvelles) ===
+  {
+    id: 'q38', type: 'qcm', category: 'Musique Générale',
+    q: "Quel artiste a chanté 'Thinking Out Loud' pour son mariage ?",
+    opts: ["Justin Bieber", "Ed Sheeran", "Sam Smith", "Bruno Mars"],
+    ok: 1,
+    explanation: "Ed Sheeran a écrit 'Thinking Out Loud' inspiré par sa relation avec Cherry Seaborn. Ils se sont mariés en 2019 ! 💕"
+  },
+  {
+    id: 'q39', type: 'qcm', category: 'Musique Générale',
+    q: "Quel rappeur français a sorti l'album 'Cœur' ?",
+    opts: ["Nekfeu", "Ninho", "Damso", "PLK"],
+    ok: 0,
+    explanation: "Nekfeu avec l'album 'Les étoiles vagabondes / Cœur' sorti en 2019 ! Un album intimiste. 🌟"
+  },
+  {
+    id: 'q40', type: 'qcm', category: 'Musique Générale',
+    q: "Quelle chanteuse a popularisé 'At Last' reprise dans des milliers de mariages ?",
+    opts: ["Aretha Franklin", "Etta James", "Whitney Houston", "Tina Turner"],
+    ok: 1,
+    explanation: "Etta James ! 'At Last' (1960) est LA chanson de première danse de mariage par excellence. 🎶"
   }
 ];
 
