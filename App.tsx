@@ -57,14 +57,14 @@ function App() {
   const [isJoining, setIsJoining] = useState(false);
   const [currentAnswers, setCurrentAnswers] = useState<any[]>([]);
 
-  // Écoute des réponses en temps réel pour le Host
+  // 1. Écoute des réponses en temps réel pour le Host (compteur X/Y)
   useEffect(() => {
     if (gameState.isMultiplayer && gameState.role === 'host' && gameState.gameCode && gameState.currentStep === 'qcm') {
       const currentItem = gameState.items[gameState.currentIndex];
       if (!currentItem) return;
 
       const channel = supabase
-        .channel('answers_realtime')
+        .channel(`answers_${gameState.gameCode}`)
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'answers', filter: `game_code=eq.${gameState.gameCode}` },
@@ -80,51 +80,56 @@ function App() {
     }
   }, [gameState.gameCode, gameState.role, gameState.currentIndex, gameState.currentStep, gameState.items]);
 
-  // Écoute du changement d'étape global (Flow Sync)
+  // 2. SYNCHRONISATION REALTIME (Flow & Questions) pour les Joueurs
   useEffect(() => {
     if (gameState.isMultiplayer && gameState.role === 'player' && gameState.gameCode) {
       const channel = supabase
-        .channel('game_flow_sync')
+        .channel(`game_sync_${gameState.gameCode}`)
         .on(
           'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'games', filter: `code=eq.${gameState.gameCode}` },
+          { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'games', 
+            filter: `code=eq.${gameState.gameCode}` 
+          },
           async (payload) => {
-            const flowIdx = payload.new.current_index;
-            const flowStep = GAME_FLOW[flowIdx];
-            if (!flowStep) {
-              if (payload.new.status === 'finished') setGameState(prev => ({ ...prev, currentStep: 'finished' }));
+            const newData = payload.new;
+            const flowIdx = newData.current_index; // flowIndex
+            const questionIdx = newData.question_index; // currentIndex (global)
+            const newStatus = newData.status;
+
+            // Redirection automatique si la partie est terminée
+            if (newStatus === 'finished') {
+              setGameState(prev => ({ ...prev, currentStep: 'finished', status: 'finished' }));
               return;
             }
-            
-            // Sync items based on the host's question_order
-            const questionOrder = payload.new.question_order || [];
-            if (questionOrder.length > 0) {
-              const allQuestions = await fetchQuestions([]);
-              const orderedItems = questionOrder
-                .map((id: string) => allQuestions.find(q => q.id === id))
-                .filter(Boolean) as Question[];
 
-              setGameState(prev => ({
-                ...prev,
-                flowIndex: flowIdx,
-                currentStep: (flowStep.type === 'announce' ? 'announce' : flowStep.type === 'qcm_block' ? 'qcm' : 'minigame') as StepType,
-                items: orderedItems
-              }));
-            } else {
-              setGameState(prev => ({
-                ...prev,
-                flowIndex: flowIdx,
-                currentStep: (flowStep.type === 'announce' ? 'announce' : flowStep.type === 'qcm_block' ? 'qcm' : 'minigame') as StepType
-              }));
-            }
+            const flowStep = GAME_FLOW[flowIdx];
+            if (!flowStep) return;
+
+            const nextStepType: StepType = 
+              flowStep.type === 'announce' ? 'announce' : 
+              flowStep.type === 'qcm_block' ? 'qcm' : 'minigame';
+
+            // Mise à jour de l'état local du joueur pour suivre le Host
+            setGameState(prev => ({
+              ...prev,
+              flowIndex: flowIdx,
+              currentIndex: questionIdx !== undefined ? questionIdx : prev.currentIndex,
+              currentStep: nextStepType,
+              status: (newStatus as any) || prev.status
+            }));
             
+            // On vide les réponses locales (l'UI QuizScreen se reset via data.id)
             setCurrentAnswers([]);
           }
         )
         .subscribe();
+
       return () => { supabase.removeChannel(channel); };
     }
-  }, [gameState.gameCode, gameState.role]);
+  }, [gameState.gameCode, gameState.role, gameState.isMultiplayer]);
 
   const resetToMenu = useCallback(() => {
     setIsJoining(false);
@@ -158,7 +163,7 @@ function App() {
   const hostGame = async () => {
     setIsLoading(true);
 
-    // Bug 2 Fix: Cleanup old finished games (> 1 hour)
+    // Nettoyage des vieilles parties terminées (> 1h)
     try {
       await supabase
         .from('games')
@@ -166,12 +171,12 @@ function App() {
         .eq('status', 'finished')
         .lt('created_at', new Date(Date.now() - 3600000).toISOString());
     } catch (e) {
-      console.warn("Cleanup failed", e);
+      console.warn("Nettoyage échoué", e);
     }
 
     const code = generateGameCode();
     
-    // Bug 1 Fix: Host pre-determines the order of ALL questions
+    // Le Host détermine l'ordre exact des questions pour tout le monde
     const allQuestions = await fetchQuestions([]);
     let allItems: Question[] = [];
     GAME_FLOW.forEach(step => {
@@ -186,7 +191,8 @@ function App() {
       code, 
       status: 'waiting', 
       mode: 'qcm', 
-      current_index: 0,
+      current_index: 0, // flowIndex
+      question_index: 0, // currentIndex
       question_order: questionOrder 
     });
 
@@ -209,7 +215,8 @@ function App() {
 
     setIsLoading(false);
 
-    supabase.channel('players_channel').on(
+    // Écouter les nouveaux joueurs
+    supabase.channel(`players_${code}`).on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'players', filter: `game_code=eq.${code}` },
       (payload) => { setGameState(prev => ({ ...prev, players: [...prev.players, payload.new as Player] })); }
@@ -219,7 +226,6 @@ function App() {
   const joinGame = async (code: string, name: string, avatar: string) => {
     setIsLoading(true);
     
-    // Bug 2 Fix: Check status before joining
     const { data: gameData, error: gameError } = await supabase
       .from('games')
       .select('*')
@@ -238,7 +244,7 @@ function App() {
       return;
     }
 
-    // Bug 2 Fix: Avoid duplicate players
+    // Gérer les doublons ou reconnexions
     const { data: existingPlayer } = await supabase
       .from('players')
       .select('*')
@@ -253,7 +259,7 @@ function App() {
     } else {
       const { data: playerData, error: insertError } = await supabase
         .from('players')
-        .insert({ game_code: code, name, avatar })
+        .insert({ game_code: code, name, avatar, score: 0 })
         .select()
         .single();
       
@@ -265,7 +271,7 @@ function App() {
       currentPlayerId = playerData.id;
     }
 
-    // Bug 1 Fix: Reconstruct items from question_order
+    // Reconstruire les items à partir de l'ordre sauvegardé par le host
     const questionOrder = gameData.question_order || [];
     let orderedItems: Question[] = [];
     if (questionOrder.length > 0) {
@@ -277,22 +283,24 @@ function App() {
     
     setGameState(prev => ({
       ...prev,
-      status: 'lobby',
+      status: gameData.status,
       currentStep: 'lobby',
       isMultiplayer: true,
       role: 'player',
       gameCode: code,
       playerId: currentPlayerId,
-      items: orderedItems
+      items: orderedItems,
+      flowIndex: gameData.current_index || 0,
+      currentIndex: gameData.question_index || 0
     }));
     setIsLoading(false);
   };
 
   const startFlow = async () => {
     if (gameState.isMultiplayer && gameState.role === 'host') {
-      await supabase.from('games').update({ status: 'playing', current_index: 0 }).eq('code', gameState.gameCode);
+      await supabase.from('games').update({ status: 'playing', current_index: 0, question_index: 0 }).eq('code', gameState.gameCode);
     }
-    setGameState(prev => ({ ...prev, currentStep: 'announce', flowIndex: 0 }));
+    setGameState(prev => ({ ...prev, currentStep: 'announce', flowIndex: 0, currentIndex: 0 }));
   };
 
   const nextFlowStep = async () => {
@@ -301,7 +309,7 @@ function App() {
       if (gameState.isMultiplayer && gameState.role === 'host') {
         await supabase.from('games').update({ status: 'finished' }).eq('code', gameState.gameCode);
       }
-      setGameState(prev => ({ ...prev, currentStep: 'finished' }));
+      setGameState(prev => ({ ...prev, currentStep: 'finished', status: 'finished' }));
       return;
     }
 
@@ -310,8 +318,11 @@ function App() {
     if (nextStep.type === 'qcm_block') nextStepType = 'qcm';
     if (nextStep.type === 'minigame') nextStepType = 'minigame';
 
+    // Sync flowIndex via current_index dans Supabase
     if (gameState.isMultiplayer && gameState.role === 'host') {
-      await supabase.from('games').update({ current_index: nextIdx }).eq('code', gameState.gameCode);
+      await supabase.from('games')
+        .update({ current_index: nextIdx })
+        .eq('code', gameState.gameCode);
     }
 
     setGameState(prev => ({
@@ -327,8 +338,16 @@ function App() {
     if (!currentItem) return;
 
     if (isCorrect) setGameState(prev => ({ ...prev, score: prev.score + 100 }));
+    
     if (gameState.isMultiplayer && gameState.role === 'player' && gameState.playerId) {
-      if (isCorrect) await supabase.from('players').update({ score: (gameState.score || 0) + 100 }).eq('id', gameState.playerId);
+      // Mise à jour score joueur
+      if (isCorrect) {
+        const { data: pData } = await supabase.from('players').select('score').eq('id', gameState.playerId).single();
+        const currentScore = pData?.score || 0;
+        await supabase.from('players').update({ score: currentScore + 100 }).eq('id', gameState.playerId);
+      }
+      
+      // Log réponse
       await supabase.from('answers').insert({
         game_code: gameState.gameCode,
         player_id: gameState.playerId,
@@ -339,12 +358,23 @@ function App() {
     }
   };
 
-  const handleNextQcm = () => {
+  const handleNextQcm = async () => {
     const currentBlockIdxInItems = gameState.currentIndex + 1;
+    // Si on a fait 5 questions, on passe à l'étape suivante du flow (mini-jeu ou annonce)
     if (currentBlockIdxInItems % 5 === 0) {
       nextFlowStep();
     } else {
-      setGameState(prev => ({ ...prev, currentIndex: prev.currentIndex + 1 }));
+      // Sinon, on avance d'une question dans le bloc actuel
+      const nextIdx = gameState.currentIndex + 1;
+      
+      // Mise à jour Supabase pour synchroniser les joueurs
+      if (gameState.isMultiplayer && gameState.role === 'host') {
+        await supabase.from('games')
+          .update({ question_index: nextIdx })
+          .eq('code', gameState.gameCode);
+      }
+
+      setGameState(prev => ({ ...prev, currentIndex: nextIdx }));
       setCurrentAnswers([]);
     }
   };

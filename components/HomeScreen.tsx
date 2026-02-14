@@ -2,7 +2,7 @@ import React from 'react';
 import { GameMode } from '../types';
 import Button from './Button';
 import Card from './Card';
-import { Play, Users, Smartphone, Heart, Wifi, WifiOff } from 'lucide-react';
+import { Play, Users, Smartphone, Heart } from 'lucide-react';
 import { isSupabaseConfigured } from '../supabaseClient';
 
 interface HomeScreenProps {
@@ -76,11 +76,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSolo, onHostGame, onJoin
              <span className="font-bold text-[#2D1B2E]">Mode Solo (Entraînement)</span>
           </Button>
         </Card>
-      </div>
-      
-      <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold tracking-widest uppercase transition-all ${isOnline ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
-          {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-          {isOnline ? 'Serveur d\'Amour : ON' : 'Mode Local'}
       </div>
     </div>
   );
