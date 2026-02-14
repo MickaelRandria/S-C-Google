@@ -367,18 +367,21 @@ function App() {
   };
 
   const handleNextQcm = async () => {
-    const currentBlockIdxInItems = gameState.currentIndex + 1;
-    if (currentBlockIdxInItems % 5 === 0) {
+    const nextIdx = gameState.currentIndex + 1;
+    
+    // TOUJOURS incrémenter d'abord localement et sur Supabase pour que les joueurs suivent
+    if (gameState.isMultiplayer && gameState.role === 'host') {
+      await supabase.from('games')
+        .update({ question_index: nextIdx })
+        .eq('code', gameState.gameCode);
+    }
+    
+    setGameState(prev => ({ ...prev, currentIndex: nextIdx }));
+    setCurrentAnswers([]);
+
+    // PUIS vérifier si le bloc de 5 est terminé pour passer à l'étape suivante du flux
+    if (nextIdx % 5 === 0) {
       nextFlowStep();
-    } else {
-      const nextIdx = gameState.currentIndex + 1;
-      if (gameState.isMultiplayer && gameState.role === 'host') {
-        await supabase.from('games')
-          .update({ question_index: nextIdx })
-          .eq('code', gameState.gameCode);
-      }
-      setGameState(prev => ({ ...prev, currentIndex: nextIdx }));
-      setCurrentAnswers([]);
     }
   };
 
